@@ -189,6 +189,8 @@ Multiplier Text:    #ff6b6b
 - **Event-driven architecture** — `GameManager`, `ScoreManager`, `RoundManager` communicate via `static event Action<...>` delegates. MonoBehaviours subscribe in `OnEnable`/`OnDisable`.
 - **CRT effect implementation** — Written as a URP HLSL shader. Must be added as a "Full Screen Pass Renderer Feature" in the URP Renderer asset (Settings/Renderer2D.asset). Create a Material using this shader and assign it there.
 - **Spring physics for card wobble** — Implemented directly in `Card.cs Update()` — no physics engine needed.
+- **Only one singleton** — `GameManager` is the sole singleton. `ScoreManager` and `RoundManager` are regular MonoBehaviours; `GameManager` and `RoundManager` each hold a `[SerializeField] private ScoreManager` reference wired in the scene.
+- **Win condition event** — `RoundManager.OnAllAntesCleared` fires when all 8 antes are cleared. Subscribe in a future win-screen script.
 - **Audio deferred** — No audio systems, managers, or placeholder hooks. Will be added in a future update.
 
 ---
@@ -197,15 +199,17 @@ Multiplier Text:    #ff6b6b
 - CRT and Glow shaders are written but not yet assigned in the Unity Editor — needs a Renderer Feature or Material setup.
 - `Card.cs` uses `OnMouseDown`/`OnMouseEnter` — requires a Box Collider 2D on the Card prefab.
 - `CameraEffects.cs` requires a URP Global Volume with Bloom, Vignette, and ChromaticAberration overrides.
+- `GameManager` and `RoundManager` each have a `[SerializeField] private ScoreManager scoreManager` — these must be wired up in the scene Inspector before play.
 
 ---
 
 ## Changelog
-| Date       | Change                                                            | Phase     |
-|------------|-------------------------------------------------------------------|-----------|
-| 2026-04-11 | Project created, Notion workspace set up                          | 0 - Setup |
-| 2026-04-11 | Folder structure, .gitignore, core scripts, CRT+Glow shaders     | 0→1       |
-| 2026-04-11 | Audio deferred to post-launch; slash commands + QA system created | 0→1       |
+| Date       | Change                                                                                        | Phase     |
+|------------|-----------------------------------------------------------------------------------------------|-----------|
+| 2026-04-11 | Project created, Notion workspace set up                                                      | 0 - Setup |
+| 2026-04-11 | Folder structure, .gitignore, core scripts, CRT+Glow shaders                                 | 0→1       |
+| 2026-04-11 | Audio deferred to post-launch; slash commands + QA system created                            | 0→1       |
+| 2026-04-11 | QA pass on scaffold: 22 issues fixed (extra singletons, magic numbers, Debug.Log, XML docs)   | 1         |
 
 ---
 

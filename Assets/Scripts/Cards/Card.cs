@@ -15,6 +15,11 @@ namespace BalatroStyle
         [SerializeField] private float hoverTiltMax = 8f;
         [SerializeField] private float springStiffness = 300f;
         [SerializeField] private float springDamping = 20f;
+        [SerializeField] private float hoverAnimDuration = 0.12f;
+        [SerializeField] private float tiltCursorMultiplier = 10f;
+
+        [Header("Selection")]
+        [SerializeField] private float selectedLiftY = 0.2f;
 
         [Header("References")]
         [SerializeField] private SpriteRenderer frontRenderer;
@@ -36,14 +41,13 @@ namespace BalatroStyle
         private bool isHovered;
         private bool isAnimating;
 
-        private static readonly int GlowIntensityId = Shader.PropertyToID("_GlowIntensity");
-
         private void Awake()
         {
             sr = GetComponent<SpriteRenderer>();
             cam = Camera.main;
         }
 
+        /// <summary>Assign CardData and update front sprite to match.</summary>
         public void Initialize(CardData data)
         {
             Data = data;
@@ -66,7 +70,7 @@ namespace BalatroStyle
             Vector3 delta = mouseWorld - transform.position;
 
             // Spring tilt toward cursor
-            float targetTilt = Mathf.Clamp(-delta.x * 10f, -hoverTiltMax, hoverTiltMax);
+            float targetTilt = Mathf.Clamp(-delta.x * tiltCursorMultiplier, -hoverTiltMax, hoverTiltMax);
             float tiltAccel = (targetTilt - currentTilt) * springStiffness * Time.deltaTime
                               - tiltVelocity * springDamping * Time.deltaTime;
             tiltVelocity += tiltAccel;
@@ -97,12 +101,12 @@ namespace BalatroStyle
             ToggleSelected();
         }
 
+        /// <summary>Toggle selected state, activate glow, and lift/lower card accordingly.</summary>
         public void ToggleSelected()
         {
             IsSelected = !IsSelected;
             SetGlowActive(IsSelected);
-            // Lift selected card slightly
-            basePosition += IsSelected ? Vector3.up * 0.2f : Vector3.down * 0.2f;
+            basePosition += IsSelected ? Vector3.up * selectedLiftY : Vector3.down * selectedLiftY;
         }
 
         private void SetGlowActive(bool active)
@@ -111,6 +115,7 @@ namespace BalatroStyle
                 glowRenderer.gameObject.SetActive(active);
         }
 
+        /// <summary>Set the sorting order on all renderers so hand overlap is correct.</summary>
         public void SetSortOrder(int order)
         {
             if (frontRenderer) frontRenderer.sortingOrder = order;
@@ -144,7 +149,7 @@ namespace BalatroStyle
 
         private IEnumerator AnimateHover(bool hoveringIn)
         {
-            float duration = 0.12f;
+            float duration = hoverAnimDuration;
             float elapsed = 0f;
             Vector3 startScale = transform.localScale;
             Vector3 endScale = hoveringIn ? Vector3.one * hoverScaleUp : Vector3.one;

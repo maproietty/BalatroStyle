@@ -11,8 +11,6 @@ namespace BalatroStyle
     [RequireComponent(typeof(Volume))]
     public class CameraEffects : MonoBehaviour
     {
-        public static CameraEffects Instance { get; private set; }
-
         [Header("Bloom Pulse")]
         [SerializeField] private float bloomPulseIntensity = 3f;
         [SerializeField] private float bloomPulseDuration = 0.4f;
@@ -30,9 +28,6 @@ namespace BalatroStyle
 
         private void Awake()
         {
-            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-            Instance = this;
-
             vol = GetComponent<Volume>();
             vol.profile.TryGet(out bloom);
             vol.profile.TryGet(out vignette);

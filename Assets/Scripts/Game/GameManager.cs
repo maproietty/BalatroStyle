@@ -14,6 +14,9 @@ namespace BalatroStyle
         [SerializeField] private int startingHandsPerRound = 4;
         [SerializeField] private int startingDiscardsPerRound = 3;
 
+        [Header("Dependencies")]
+        [SerializeField] private ScoreManager scoreManager;
+
         public int HandsRemaining { get; private set; }
         public int DiscardsRemaining { get; private set; }
         public GameState CurrentState { get; private set; } = GameState.Menu;
@@ -40,12 +43,14 @@ namespace BalatroStyle
             ChangeState(GameState.Menu);
         }
 
+        /// <summary>Reset score and begin the first round of a new game.</summary>
         public void StartNewGame()
         {
-            ScoreManager.Instance?.ResetScore();
+            scoreManager?.ResetScore();
             StartRound();
         }
 
+        /// <summary>Initialize hand/discard counts and transition to Playing state.</summary>
         public void StartRound()
         {
             HandsRemaining = startingHandsPerRound;
@@ -54,6 +59,7 @@ namespace BalatroStyle
             OnRoundStarted?.Invoke();
         }
 
+        /// <summary>Consume one hand. Ends the round when hands reach zero.</summary>
         public void UseHand()
         {
             HandsRemaining = Mathf.Max(0, HandsRemaining - 1);
@@ -61,6 +67,7 @@ namespace BalatroStyle
                 EndRound();
         }
 
+        /// <summary>Consume one discard allowance for this round.</summary>
         public void UseDiscard()
         {
             DiscardsRemaining = Mathf.Max(0, DiscardsRemaining - 1);
@@ -72,6 +79,7 @@ namespace BalatroStyle
             OnRoundEnded?.Invoke();
         }
 
+        /// <summary>Transition to GameOver state and fire the OnGameOver event.</summary>
         public void TriggerGameOver()
         {
             ChangeState(GameState.GameOver);

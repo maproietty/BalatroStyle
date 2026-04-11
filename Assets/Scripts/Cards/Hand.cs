@@ -51,6 +51,7 @@ namespace BalatroStyle
         /// <summary>Return selected card data without destroying (for play).</summary>
         public List<Card> GetSelected() => cards.Where(c => c.IsSelected).ToList();
 
+        /// <summary>Destroy all card GameObjects and clear the hand list.</summary>
         public void ClearHand()
         {
             foreach (var card in cards)

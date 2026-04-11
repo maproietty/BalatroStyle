@@ -9,10 +9,9 @@ namespace BalatroStyle
     /// </summary>
     public class ScoreManager : MonoBehaviour
     {
-        public static ScoreManager Instance { get; private set; }
-
         [Header("Scoring")]
         [SerializeField] private float rollDuration = 0.8f;
+        [SerializeField] private float maxScoreForMagnitude = 5000f;
 
         public int TotalScore { get; private set; }
         public int CurrentChips { get; private set; }
@@ -22,12 +21,7 @@ namespace BalatroStyle
         public static event Action<int, int> OnScoreChanged;     // chips, multiplier
         public static event Action<int, float> OnScoreRolled;    // totalDelta, magnitude (0-1)
 
-        private void Awake()
-        {
-            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-            Instance = this;
-        }
-
+        /// <summary>Reset all score state to zero and fire OnScoreChanged.</summary>
         public void ResetScore()
         {
             TotalScore = 0;
@@ -44,7 +38,7 @@ namespace BalatroStyle
             int delta = chips * multiplier;
             OnScoreChanged?.Invoke(chips, multiplier);
 
-            float magnitude = Mathf.Clamp01(delta / 5000f);
+            float magnitude = Mathf.Clamp01(delta / maxScoreForMagnitude);
             OnScoreRolled?.Invoke(delta, magnitude);
 
             StartCoroutine(RollScoreCoroutine(TotalScore, TotalScore + delta));

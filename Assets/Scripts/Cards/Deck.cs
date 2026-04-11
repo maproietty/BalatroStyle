@@ -27,6 +27,7 @@ namespace BalatroStyle
             Shuffle();
         }
 
+        /// <summary>Draw the top card from the pile; reshuffles discard if pile is empty.</summary>
         public CardData Draw()
         {
             if (drawPile.Count == 0)
@@ -43,6 +44,7 @@ namespace BalatroStyle
             return card;
         }
 
+        /// <summary>Draw <paramref name="count"/> cards and return them as a list.</summary>
         public List<CardData> DrawMultiple(int count)
         {
             var hand = new List<CardData>(count);
@@ -54,6 +56,7 @@ namespace BalatroStyle
             return hand;
         }
 
+        /// <summary>Move a card to the discard pile.</summary>
         public void Discard(CardData card)
         {
             discardPile.Add(card);

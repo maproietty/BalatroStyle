@@ -8,24 +8,22 @@ namespace BalatroStyle
     /// </summary>
     public class RoundManager : MonoBehaviour
     {
-        public static RoundManager Instance { get; private set; }
-
         [Header("Blind Targets")]
         [SerializeField] private int[] smallBlindTargets = { 300, 800, 2000, 5000, 11000, 20000, 35000, 50000 };
         [SerializeField] private int[] bigBlindTargets   = { 450, 1200, 3000, 7500, 16500, 30000, 52500, 75000 };
         [SerializeField] private int[] bossBlindTargets  = { 600, 1600, 4000, 10000, 22000, 40000, 70000, 100000 };
 
+        [Header("Dependencies")]
+        [SerializeField] private ScoreManager scoreManager;
+
         public int CurrentAnte { get; private set; } = 1;
         public int CurrentBlindIndex { get; private set; } = 0; // 0=small, 1=big, 2=boss
+
+        /// <summary>Score the player must reach to clear the current blind.</summary>
         public int CurrentBlindTarget => GetBlindTarget(CurrentAnte - 1, CurrentBlindIndex);
 
-        public static event Action<int, int, int> OnBlindChanged; // ante, blindIndex, target
-
-        private void Awake()
-        {
-            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-            Instance = this;
-        }
+        public static event Action<int, int, int> OnBlindChanged;  // ante, blindIndex, target
+        public static event Action OnAllAntesCleared;
 
         private void OnEnable()
         {
@@ -39,8 +37,8 @@ namespace BalatroStyle
 
         private void HandleRoundEnd()
         {
-            bool scoremet = ScoreManager.Instance != null &&
-                            ScoreManager.Instance.TotalScore >= CurrentBlindTarget;
+            bool scoremet = scoreManager != null &&
+                            scoreManager.TotalScore >= CurrentBlindTarget;
 
             if (!scoremet)
             {
@@ -62,8 +60,7 @@ namespace BalatroStyle
 
             if (CurrentAnte - 1 >= smallBlindTargets.Length)
             {
-                // Player won all antes — handle win condition
-                Debug.Log("All antes cleared — you win!");
+                OnAllAntesCleared?.Invoke();
                 return;
             }
 
