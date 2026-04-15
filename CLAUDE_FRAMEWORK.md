@@ -123,8 +123,9 @@ Multiplier Text:    #ff6b6b
 ### Phase 1 — Core Visuals (CURRENT)
 - [x] CRT shader (Assets/Shaders/CRT.shader)
 - [x] Neon Glow shader (Assets/Shaders/Glow.shader)
+- [x] Animated background shader + fit script (Assets/Shaders/AnimatedBackground.shader, Assets/Scripts/Effects/AnimatedBackground.cs)
+- [x] Create Quad GameObject with AnimatedBackground material + script — Unity Editor
 - [ ] Assign CRT shader as a Renderer Feature (URP Full Screen Pass) — Unity Editor
-- [ ] Create dark animated background GameObject/shader
 - [ ] Set up pixel-perfect camera and URP Volume (Bloom, Vignette, Chromatic Aberration)
 
 ### Phase 2 — Card System
@@ -180,6 +181,7 @@ Multiplier Text:    #ff6b6b
 - `Scripts/Cards/Card.cs` — hover wobble (spring physics), selection, move coroutine
 - `Scripts/Effects/ScreenShake.cs` — auto-shakes on score events
 - `Scripts/Effects/CameraEffects.cs` — bloom pulse, chromatic aberration on score
+- `Scripts/Effects/AnimatedBackground.cs` — scales background Quad to cover the camera each frame (pairs with AnimatedBackground.shader)
 
 ---
 
@@ -210,6 +212,8 @@ Multiplier Text:    #ff6b6b
 | 2026-04-11 | Folder structure, .gitignore, core scripts, CRT+Glow shaders                                 | 0→1       |
 | 2026-04-11 | Audio deferred to post-launch; slash commands + QA system created                            | 0→1       |
 | 2026-04-11 | QA pass on scaffold: 22 issues fixed (extra singletons, magic numbers, Debug.Log, XML docs)   | 1         |
+| 2026-04-14 | Animated background: palette-matched swirl shader + camera-fit script (edit-mode preview)     | 1         |
+| 2026-04-14 | Background Quad wired in scene; QA: 1 issue fixed (removed unused cached MeshRenderer field)  | 1         |
 
 ---
 

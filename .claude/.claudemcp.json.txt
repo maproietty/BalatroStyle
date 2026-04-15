@@ -1,0 +1,10 @@
+// .claude/mcp.json
+{
+  "mcpServers": {
+    "notion": {
+      "type": "url",
+      "url": "https://mcp.notion.com/mcp",
+      "name": "notion-mcp"
+    }
+  }
+}
