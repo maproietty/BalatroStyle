@@ -23,8 +23,9 @@ namespace BalatroStyle
         private Bloom bloom;
         private Vignette vignette;
         private ChromaticAberration chromatic;
+        private const float MinScoreMagnitude = 0.05f;
+
         private float baseBloomIntensity;
-        private float targetAberration;
 
         private void Awake()
         {
@@ -59,7 +60,7 @@ namespace BalatroStyle
 
         private void HandleScore(int delta, float magnitude)
         {
-            if (magnitude < 0.05f) return;
+            if (magnitude < MinScoreMagnitude) return;
 
             if (chromatic != null)
                 chromatic.intensity.value = Mathf.Max(chromatic.intensity.value, aberrationOnScore * magnitude);
@@ -75,7 +76,7 @@ namespace BalatroStyle
             while (elapsed < bloomPulseDuration)
             {
                 elapsed += Time.deltaTime;
-                float t = elapsed / bloomPulseDuration;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / bloomPulseDuration);
                 bloom.intensity.value = Mathf.Lerp(target, baseBloomIntensity, t);
                 yield return null;
             }

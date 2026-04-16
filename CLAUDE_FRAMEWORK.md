@@ -219,7 +219,8 @@ Multiplier Text:    #ff6b6b
 | 2026-04-11 | QA pass on scaffold: 22 issues fixed (extra singletons, magic numbers, Debug.Log, XML docs)   | 1         |
 | 2026-04-14 | Animated background: palette-matched swirl shader + camera-fit script (edit-mode preview)     | 1         |
 | 2026-04-14 | Background Quad wired in scene; QA: 1 issue fixed (removed unused cached MeshRenderer field)  | 1         |
-| 2026-04-16 | Card flip system: `Card.Flip` coroutine + `OnCardRevealed` event + staggered deal-then-reveal in `Hand`. Juice: scale-pop + glow pulse on reveal. QA: 1 fix (removed unused `sr` field). Audit: 3 findings logged to Notion. | 2 |
+| 2026-04-16 | Card flip system: `Card.Flip` coroutine + `OnCardRevealed` event + staggered deal-then-reveal in `Hand`. Juice: scale-pop + glow pulse on reveal. QA: 1 fix (removed unused `sr` field). Audit: 3 findings logged to Notion. | 2         |
+| 2026-04-16 | QA sweep: CardData fields → `[SerializeField]` private + `FormerlySerializedAs`; CameraEffects BloomPulse linear→SmoothStep; removed orphaned `RequireComponent` from Card; removed unused `targetAberration` field + extracted magic number in CameraEffects. QA: 5 issues fixed. | 1–2 |
 
 ---
 

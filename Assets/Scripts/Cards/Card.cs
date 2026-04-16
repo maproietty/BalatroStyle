@@ -7,7 +7,6 @@ namespace BalatroStyle
     /// <summary>
     /// MonoBehaviour on a Card prefab. Handles visual state, hover wobble, selection, flip.
     /// </summary>
-    [RequireComponent(typeof(SpriteRenderer))]
     public class Card : MonoBehaviour
     {
         /// <summary>Fires after a face-up flip completes. Listeners get the revealed card.</summary>
@@ -16,6 +15,8 @@ namespace BalatroStyle
         private const float FlipPopOvershoot = 1.08f;
         private const float FlipPopDuration = 0.08f;
         private const float RevealGlowDuration = 0.18f;
+        private const int SortOrderOffset = 10;
+        private const int SortOrderStride = 3;
 
         [Header("Hover Settings")]
         [SerializeField] private float hoverScaleUp = 1.12f;
@@ -141,9 +142,10 @@ namespace BalatroStyle
         /// <summary>Set the sorting order on all renderers so hand overlap is correct.</summary>
         public void SetSortOrder(int order)
         {
-            if (frontRenderer) frontRenderer.sortingOrder = order;
-            if (backRenderer)  backRenderer.sortingOrder  = order;
-            if (glowRenderer)  glowRenderer.sortingOrder  = order - 1;
+            int baseOrder = SortOrderOffset + order * SortOrderStride;
+            if (glowRenderer)  glowRenderer.sortingOrder  = baseOrder;
+            if (backRenderer)  backRenderer.sortingOrder  = baseOrder + 1;
+            if (frontRenderer) frontRenderer.sortingOrder = baseOrder + 1;
         }
 
         /// <summary>Coroutine for the Hand to smoothly reposition cards on layout.</summary>
