@@ -1,14 +1,22 @@
 using UnityEngine;
+using System;
 using System.Collections;
 
 namespace BalatroStyle
 {
     /// <summary>
-    /// MonoBehaviour on a Card prefab. Handles visual state, hover wobble, selection.
+    /// MonoBehaviour on a Card prefab. Handles visual state, hover wobble, selection, flip.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public class Card : MonoBehaviour
     {
+        /// <summary>Fires after a face-up flip completes. Listeners get the revealed card.</summary>
+        public static event Action<Card> OnCardRevealed;
+
+        private const float FlipPopOvershoot = 1.08f;
+        private const float FlipPopDuration = 0.08f;
+        private const float RevealGlowDuration = 0.18f;
+
         [Header("Hover Settings")]
         [SerializeField] private float hoverScaleUp = 1.12f;
         [SerializeField] private float hoverLiftY = 0.35f;
@@ -21,6 +29,9 @@ namespace BalatroStyle
         [Header("Selection")]
         [SerializeField] private float selectedLiftY = 0.2f;
 
+        [Header("Flip")]
+        [SerializeField] private float defaultFlipDuration = 0.32f;
+
         [Header("References")]
         [SerializeField] private SpriteRenderer frontRenderer;
         [SerializeField] private SpriteRenderer backRenderer;
@@ -30,7 +41,6 @@ namespace BalatroStyle
         public bool IsSelected { get; private set; }
         public bool IsFaceUp { get; private set; } = true;
 
-        private SpriteRenderer sr;
         private Camera cam;
 
         // Spring physics for hover wobble
@@ -43,7 +53,6 @@ namespace BalatroStyle
 
         private void Awake()
         {
-            sr = GetComponent<SpriteRenderer>();
             cam = Camera.main;
         }
 
@@ -53,6 +62,20 @@ namespace BalatroStyle
             Data = data;
             if (frontRenderer != null && data.frontSprite != null)
                 frontRenderer.sprite = data.frontSprite;
+            ApplyFaceState();
+        }
+
+        /// <summary>Set face-up state instantly without animation. Useful at deal-time.</summary>
+        public void SetFaceUpInstant(bool faceUp)
+        {
+            IsFaceUp = faceUp;
+            ApplyFaceState();
+        }
+
+        private void ApplyFaceState()
+        {
+            if (frontRenderer != null) frontRenderer.enabled = IsFaceUp;
+            if (backRenderer  != null) backRenderer.enabled  = !IsFaceUp;
         }
 
         private void Update()
@@ -145,6 +168,104 @@ namespace BalatroStyle
             basePosition = targetPos;
             baseRotation = targetRot;
             isAnimating = false;
+        }
+
+        /// <summary>Flip the card to the requested face over the given duration.</summary>
+        public IEnumerator Flip(bool faceUp, float duration)
+        {
+            if (IsFaceUp == faceUp) yield break;
+
+            isAnimating = true;
+
+            float half = duration * 0.5f;
+            float elapsed = 0f;
+            Vector3 startScale = transform.localScale;
+            Vector3 flatScale = new Vector3(0f, startScale.y, startScale.z);
+
+            // First half: scale X to 0
+            while (elapsed < half)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / half);
+                transform.localScale = Vector3.Lerp(startScale, flatScale, t);
+                yield return null;
+            }
+
+            // Mid-flip: swap which face renders
+            IsFaceUp = faceUp;
+            ApplyFaceState();
+
+            // Second half: scale X back out
+            elapsed = 0f;
+            while (elapsed < half)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / half);
+                transform.localScale = Vector3.Lerp(flatScale, startScale, t);
+                yield return null;
+            }
+
+            transform.localScale = startScale;
+            isAnimating = false;
+
+            if (faceUp)
+            {
+                StartCoroutine(FlipPop(startScale));
+                StartCoroutine(RevealGlowPulse());
+                OnCardRevealed?.Invoke(this);
+            }
+        }
+
+        /// <summary>Convenience: flip to face up using the inspector-default duration.</summary>
+        public IEnumerator FlipToFaceUp() => Flip(true, defaultFlipDuration);
+
+        /// <summary>Convenience: flip to face down using the inspector-default duration.</summary>
+        public IEnumerator FlipToFaceDown() => Flip(false, defaultFlipDuration);
+
+        private IEnumerator FlipPop(Vector3 baseScale)
+        {
+            float elapsed = 0f;
+            Vector3 peakScale = baseScale * FlipPopOvershoot;
+
+            while (elapsed < FlipPopDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / FlipPopDuration);
+                transform.localScale = Vector3.Lerp(baseScale, peakScale, t);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < FlipPopDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / FlipPopDuration);
+                transform.localScale = Vector3.Lerp(peakScale, baseScale, t);
+                yield return null;
+            }
+
+            transform.localScale = baseScale;
+        }
+
+        private IEnumerator RevealGlowPulse()
+        {
+            if (glowRenderer == null || IsSelected) yield break;
+
+            glowRenderer.gameObject.SetActive(true);
+            float elapsed = 0f;
+            Color baseColor = glowRenderer.color;
+            Color transparent = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
+
+            while (elapsed < RevealGlowDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / RevealGlowDuration);
+                glowRenderer.color = Color.Lerp(baseColor, transparent, t);
+                yield return null;
+            }
+
+            glowRenderer.color = baseColor;
+            glowRenderer.gameObject.SetActive(false);
         }
 
         private IEnumerator AnimateHover(bool hoveringIn)

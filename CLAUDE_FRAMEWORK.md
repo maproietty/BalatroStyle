@@ -132,7 +132,7 @@ Multiplier Text:    #ff6b6b
 - [ ] Design card sprite (front face with suit/rank)
 - [ ] Design card back sprite
 - [ ] Build Card prefab with hover/select animations
-- [ ] Card flip animation (front/back)
+- [x] Card flip animation (front/back)
 - [ ] Hand layout system (fan cards in arc)
 - [ ] Card drag & drop / selection system
 - [ ] Card wobble/tilt on hover
@@ -178,7 +178,7 @@ Multiplier Text:    #ff6b6b
 - `Scripts/Cards/CardData.cs` — ScriptableObject for card definition
 - `Scripts/Cards/Deck.cs` — shuffle, draw, discard
 - `Scripts/Cards/Hand.cs` — fan layout, card management
-- `Scripts/Cards/Card.cs` — hover wobble (spring physics), selection, move coroutine
+- `Scripts/Cards/Card.cs` — hover wobble (spring physics), selection, move coroutine, flip with reveal pop+glow, `OnCardRevealed` event
 - `Scripts/Effects/ScreenShake.cs` — auto-shakes on score events
 - `Scripts/Effects/CameraEffects.cs` — bloom pulse, chromatic aberration on score
 - `Scripts/Effects/AnimatedBackground.cs` — scales background Quad to cover the camera each frame (pairs with AnimatedBackground.shader)
@@ -193,6 +193,8 @@ Multiplier Text:    #ff6b6b
 - **Spring physics for card wobble** — Implemented directly in `Card.cs Update()` — no physics engine needed.
 - **Only one singleton** — `GameManager` is the sole singleton. `ScoreManager` and `RoundManager` are regular MonoBehaviours; `GameManager` and `RoundManager` each hold a `[SerializeField] private ScoreManager` reference wired in the scene.
 - **Win condition event** — `RoundManager.OnAllAntesCleared` fires when all 8 antes are cleared. Subscribe in a future win-screen script.
+- **Card reveal event** — `Card.OnCardRevealed` (static `Action<Card>`) fires after a face-up flip completes. Subscribe in future systems (e.g. discovery log, tutorial highlight) without coupling to `Hand` or `Deck`.
+- **Deal flow** — `Hand.DealCards` instantiates cards face-down, fans them into the arc, waits `dealFlipDelay`, then flips each card with `dealStagger` between flips. The cascading reveal is the sprint's juice signature.
 - **Audio deferred** — No audio systems, managers, or placeholder hooks. Will be added in a future update.
 
 ---
@@ -202,6 +204,9 @@ Multiplier Text:    #ff6b6b
 - `Card.cs` uses `OnMouseDown`/`OnMouseEnter` — requires a Box Collider 2D on the Card prefab.
 - `CameraEffects.cs` requires a URP Global Volume with Bloom, Vignette, and ChromaticAberration overrides.
 - `GameManager` and `RoundManager` each have a `[SerializeField] private ScoreManager scoreManager` — these must be wired up in the scene Inspector before play.
+- Scene file mismatch — only `Assets/Scenes/SampleScene.unity` exists (Unity default); framework specifies `Main.unity` and `Menu.unity`. Developer to rename or replace.
+- `Assets/Audio/Music/` and `Assets/Audio/SFX/` folders exist but are empty — leftover scaffolding that contradicts the audio-deferred policy. Safe to leave or delete in Editor.
+- Card prefab needs `backRenderer` and `glowRenderer` references assigned in the Inspector for the flip and reveal-glow effects to render correctly.
 
 ---
 
@@ -214,6 +219,7 @@ Multiplier Text:    #ff6b6b
 | 2026-04-11 | QA pass on scaffold: 22 issues fixed (extra singletons, magic numbers, Debug.Log, XML docs)   | 1         |
 | 2026-04-14 | Animated background: palette-matched swirl shader + camera-fit script (edit-mode preview)     | 1         |
 | 2026-04-14 | Background Quad wired in scene; QA: 1 issue fixed (removed unused cached MeshRenderer field)  | 1         |
+| 2026-04-16 | Card flip system: `Card.Flip` coroutine + `OnCardRevealed` event + staggered deal-then-reveal in `Hand`. Juice: scale-pop + glow pulse on reveal. QA: 1 fix (removed unused `sr` field). Audit: 3 findings logged to Notion. | 2 |
 
 ---
 

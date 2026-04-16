@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -15,6 +16,11 @@ namespace BalatroStyle
         [SerializeField] private float maxArcAngle = 20f;
         [SerializeField] private float layoutAnimDuration = 0.25f;
 
+        [Header("Deal")]
+        [SerializeField] private float dealStagger = 0.07f;
+        [SerializeField] private float dealFlipDelay = 0.15f;
+        [SerializeField] private float dealFlipDuration = 0.32f;
+
         [Header("Prefab")]
         [SerializeField] private Card cardPrefab;
 
@@ -22,16 +28,30 @@ namespace BalatroStyle
 
         public IReadOnlyList<Card> Cards => cards;
 
-        /// <summary>Instantiate a card for each CardData and arrange in arc.</summary>
+        /// <summary>Instantiate a card for each CardData face-down, fan into arc, then reveal with stagger.</summary>
         public void DealCards(List<CardData> cardDatas)
         {
+            var newCards = new List<Card>(cardDatas.Count);
             foreach (var data in cardDatas)
             {
                 var card = Instantiate(cardPrefab, transform);
+                card.SetFaceUpInstant(false);
                 card.Initialize(data);
                 cards.Add(card);
+                newCards.Add(card);
             }
             ArrangeCards();
+            StartCoroutine(StaggeredReveal(newCards));
+        }
+
+        private IEnumerator StaggeredReveal(List<Card> dealtCards)
+        {
+            yield return new WaitForSeconds(dealFlipDelay);
+            foreach (var card in dealtCards)
+            {
+                StartCoroutine(card.Flip(true, dealFlipDuration));
+                yield return new WaitForSeconds(dealStagger);
+            }
         }
 
         /// <summary>Remove selected cards and return their data for discard.</summary>
