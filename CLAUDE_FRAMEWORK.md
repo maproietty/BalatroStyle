@@ -146,14 +146,14 @@ Multiplier Text:    #ff6b6b
 - [ ] Joker card system (modifiers/special effects)
 
 ### Phase 4 — Effects & Juice
-- [ ] Screen shake on big scores
-- [ ] Score counter with rolling number animation
+- [x] Screen shake on big scores
+- [x] Score counter with rolling number animation
 - [ ] Particle effects (chips, sparks on scoring)
-- [ ] Card deal animation (from deck to hand)
+- [x] Card deal animation (from deck to hand)
 - [ ] Played cards slide to scoring area
 
 ### Phase 5 — UI & Menus
-- [ ] HUD layout (score, multiplier, hands left, discards left)
+- [x] HUD layout (score, multiplier, hands left, discards left)
 - [ ] Main menu screen
 - [ ] Game over / results screen
 - [ ] Retro-styled font integration
@@ -172,6 +172,8 @@ Multiplier Text:    #ff6b6b
 **Phase 1 — Core Visuals** (in progress)
 
 ### Scaffolded Scripts (ready, need wiring in scenes)
+- `Scripts/UI/ScoreHUD.cs` — subscribes to scoring + hand-action events; drives rolling total score, chips×mult label, hands/discards remaining, selection count; scale pops on counters, gold color flash on score roll
+- `Scripts/UI/HandNameBanner.cs` — reveals played hand's name + chips×mult when `HandScorer.OnHandEvaluated` fires; scale-pop-overshoot reveal → hold → fade+drift retract. `RequireComponent(typeof(CanvasGroup))`
 - `Scripts/Game/GameManager.cs` — singleton, state machine, events
 - `Scripts/Game/ScoreManager.cs` — chips×multiplier scoring, rolling counter events
 - `Scripts/Game/RoundManager.cs` — ante/blind progression
@@ -205,6 +207,7 @@ Multiplier Text:    #ff6b6b
 - **Decoupled shake channel** — `ScreenShake.Request(amplitude, duration)` is a static convenience that fires `OnShakeRequested`; any active `ScreenShake` instance handles it. Used by `HandActionController` on play without a direct reference.
 - **Hand evaluation pipeline** — `HandActionController.OnHandPlayed(List<CardData>)` → `HandScorer.HandleHandPlayed` → `PokerHandEvaluator.Evaluate` → `ScoreManager.ApplyScore(chips, mult)`. `HandScorer` also fires `OnHandEvaluated(EvaluatedHand)` for future hand-name banners and scales `ScreenShake.Request` by hand strength (SmoothStep lerp across the HandType enum). Evaluator is pure C# — no Unity deps — so it is testable and reusable.
 - **Balatro-authentic scoring** — Final score = (`BaseChips` from hand type + sum of each scoring card's `ChipValue`) × `BaseMultiplier`. Only cards that participate in the hand score (e.g. only the pair in a Pair hand), matching Balatro's behavior and setting up per-card chip-fly juice later.
+- **HUD pipeline** — `ScoreHUD` is a pure listener: subscribes to `ScoreManager.OnScoreChanged` (for chips×mult + reset detection), `HandScorer.OnHandEvaluated` (authoritative source of the displayed delta — avoids race with `ScoreManager.TotalScore` which is assigned after the `OnScoreChanged` fire), `HandActionController.OnHandPlayed`/`OnHandDiscarded`/`OnSelectionCountChanged`, and `GameManager.OnRoundStarted`. Holds a single `[SerializeField] ScoreManager` ref (same sanctioned pattern as GameManager/RoundManager) solely to read `TotalScore` during `RefreshAll`. `HandNameBanner` subscribes only to `HandScorer.OnHandEvaluated` — decoupled from scoring state.
 - **Audio deferred** — No audio systems, managers, or placeholder hooks. Will be added in a future update.
 
 ---
@@ -220,6 +223,8 @@ Multiplier Text:    #ff6b6b
 - `HandScorer` component needs to be added to a GameObject (e.g. GameManager) and its `ScoreManager` reference wired in the Inspector.
 - `Assets/Resources/Cards/` contains only 5 of 52 `CardData` assets; the poker evaluator can only produce meaningful hand classifications once the full deck is populated.
 - `Assets/Scenes/SampleScene/` folder (containing `Global Volume Profile.asset`) is a leftover from the original SampleScene. Safe to leave if referenced by the Main camera's URP Volume, but the folder name no longer matches any scene.
+- `ScoreHUD` + `HandNameBanner` need scene wiring: create a world-space or screen-space Canvas, add TMP text labels for total score, chips×mult, hands remaining, discards remaining, selection count, plus a banner RectTransform (with `CanvasGroup`) for the hand-name popup. Wire all `[SerializeField]` refs in the Inspector.
+- Minor DRY opportunity: `HandScorer`, `ScoreHUD`, and `HandNameBanner` each loop `EvaluatedHand.ScoringCards` to compute total chips. Candidate for a computed `TotalChips` property on `EvaluatedHand` in a later sprint. Safe to defer.
 
 ---
 
@@ -238,6 +243,7 @@ Multiplier Text:    #ff6b6b
 | 2026-04-17 | Hotfix: `ScreenShake.cs` — adding `using System;` for `Action<float,float>` event introduced `System.Random`/`UnityEngine.Random` ambiguity at `ShakeCoroutine` lines 65–66 (CS0104). Fully-qualified the two `UnityEngine.Random.Range` calls to resolve. | 2 |
 | 2026-04-17 | Poker hand evaluation + scoring bridge: `HandType` enum, `EvaluatedHand` struct, pure static `PokerHandEvaluator` (Balatro base values, wheel-straight support), `HandScorer` MonoBehaviour subscribing to `OnHandPlayed` → `ScoreManager.ApplyScore`. Juice: hand-strength-scaled screen shake (SmoothStep lerp, 0.05→0.35 amplitude), `OnHandEvaluated` event hook for future hand-name banner. QA: 0 issues. Audit: 0 auto-fixed, 2 new items logged (HandScorer scene wiring, 5/52 CardData assets); resolved scene-file-mismatch issue (Main.unity + Menu.unity now present). | 3 |
 | 2026-04-17 | Hotfix: `PokerHandEvaluator.cs` — `out bool isRoyal` declared inline inside a short-circuited `&&` meant the `out` param was not definitely assigned when count≠5 (CS0165). Hoisted `bool isRoyal = false;` to a separate line before the `IsStraight` call. | 3 |
+| 2026-04-17 | HUD system: `ScoreHUD` (rolling total score, chips×mult, hands/discards remaining, selection count; scale pops on counter changes; gold color flash on score roll) + `HandNameBanner` (RequireComponent CanvasGroup; scale-overshoot reveal → hold → fade+drift retract). Event-only coupling: subscribes to `ScoreManager.OnScoreChanged`, `HandScorer.OnHandEvaluated`, `HandActionController` events, `GameManager.OnRoundStarted`. QA: 0 issues. Audit: 0 auto-fixed, 2 new items logged (ScoreHUD/HandNameBanner scene wiring, DRY opportunity on EvaluatedHand.TotalChips); resolved prior TestScene.unity item (file no longer present). | 4–5 |
 
 ---
 
