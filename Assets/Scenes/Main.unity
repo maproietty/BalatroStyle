@@ -580,6 +580,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1207371528}
   - component: {fileID: 1207371527}
+  - component: {fileID: 1207371529}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -618,6 +619,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1207371529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1207371526}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb85a21bf60845549a38a58ca36b62b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BalatroStyle.HandScorer
+  scoreManager: {fileID: 1348586917}
+  minShakeAmplitude: 0.05
+  maxShakeAmplitude: 0.35
+  shakeDuration: 0.32
 --- !u!1 &1218364239
 GameObject:
   m_ObjectHideFlags: 0

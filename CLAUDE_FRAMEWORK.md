@@ -139,10 +139,10 @@ Multiplier Text:    #ff6b6b
 
 ### Phase 3 — Game Logic
 - [ ] Deck data model (52 cards, shuffle, draw)
-- [ ] Poker hand evaluation system
-- [ ] Scoring system (chips × multiplier)
+- [x] Poker hand evaluation system
+- [x] Scoring system (chips × multiplier)
 - [ ] Round/ante progression system
-- [ ] Discard mechanic
+- [x] Discard mechanic
 - [ ] Joker card system (modifiers/special effects)
 
 ### Phase 4 — Effects & Juice
@@ -176,6 +176,10 @@ Multiplier Text:    #ff6b6b
 - `Scripts/Game/ScoreManager.cs` — chips×multiplier scoring, rolling counter events
 - `Scripts/Game/RoundManager.cs` — ante/blind progression
 - `Scripts/Game/HandActionController.cs` — selection-cap gating, play/discard pipeline, hotkeys (`Space`=play, `D`=discard), static events `OnHandPlayed`/`OnHandDiscarded`/`OnSelectionCountChanged`/`OnSelectionRejected`
+- `Scripts/Game/HandScorer.cs` — subscribes to `HandActionController.OnHandPlayed`, evaluates hand via `PokerHandEvaluator`, applies chips × multiplier to `ScoreManager`, fires `OnHandEvaluated`, requests hand-strength-scaled screen shake
+- `Scripts/Cards/HandType.cs` — poker hand enum (HighCard → RoyalFlush), ordered by strength
+- `Scripts/Cards/EvaluatedHand.cs` — readonly struct: type, scoring cards, base chips, base multiplier, display name
+- `Scripts/Cards/PokerHandEvaluator.cs` — pure static class; `Evaluate(IReadOnlyList<CardData>) → EvaluatedHand`. Balatro base values, wheel-straight support
 - `Scripts/Cards/CardData.cs` — ScriptableObject for card definition
 - `Scripts/Cards/Deck.cs` — shuffle, draw, discard
 - `Scripts/Cards/Hand.cs` — fan layout, card management, `RefillTo(Deck, handSize)` with staggered reveal
@@ -199,6 +203,8 @@ Multiplier Text:    #ff6b6b
 - **Selection pipeline** — `Card.OnMouseDown` fires `OnSelectToggleRequested` (not a direct toggle). `HandActionController` subscribes, enforces `maxSelected` cap (default 5), and calls `Card.TrySetSelected`. Rejected selections trigger `Card.BounceReject` for feedback. This keeps `Card` ignorant of hand-wide rules.
 - **Play / Discard pipeline** — `HandActionController.PlaySelected` / `DiscardSelected` consume counts on `GameManager`, remove cards via `Hand.RemoveSelected`, push discards to `Deck`, fire `OnHandPlayed` / `OnHandDiscarded`, then `Hand.RefillTo(deck, handSize)` tops the hand back up with a staggered reveal.
 - **Decoupled shake channel** — `ScreenShake.Request(amplitude, duration)` is a static convenience that fires `OnShakeRequested`; any active `ScreenShake` instance handles it. Used by `HandActionController` on play without a direct reference.
+- **Hand evaluation pipeline** — `HandActionController.OnHandPlayed(List<CardData>)` → `HandScorer.HandleHandPlayed` → `PokerHandEvaluator.Evaluate` → `ScoreManager.ApplyScore(chips, mult)`. `HandScorer` also fires `OnHandEvaluated(EvaluatedHand)` for future hand-name banners and scales `ScreenShake.Request` by hand strength (SmoothStep lerp across the HandType enum). Evaluator is pure C# — no Unity deps — so it is testable and reusable.
+- **Balatro-authentic scoring** — Final score = (`BaseChips` from hand type + sum of each scoring card's `ChipValue`) × `BaseMultiplier`. Only cards that participate in the hand score (e.g. only the pair in a Pair hand), matching Balatro's behavior and setting up per-card chip-fly juice later.
 - **Audio deferred** — No audio systems, managers, or placeholder hooks. Will be added in a future update.
 
 ---
@@ -208,10 +214,12 @@ Multiplier Text:    #ff6b6b
 - `Card.cs` uses `OnMouseDown`/`OnMouseEnter` — requires a Box Collider 2D on the Card prefab.
 - `CameraEffects.cs` requires a URP Global Volume with Bloom, Vignette, and ChromaticAberration overrides.
 - `GameManager` and `RoundManager` each have a `[SerializeField] private ScoreManager scoreManager` — these must be wired up in the scene Inspector before play.
-- Scene file mismatch — `Assets/Scenes/SampleScene.unity` and `Assets/Scenes/TestScene.unity` both exist; framework specifies `Main.unity` and `Menu.unity`. Developer to rename or replace.
 - `Assets/Settings/` folder (Unity 6 URP auto-generated) is not listed in the approved folder structure; safe to keep, noted for awareness.
 - `Assets/Audio/Music/` and `Assets/Audio/SFX/` folders exist but are empty — leftover scaffolding that contradicts the audio-deferred policy. Safe to leave or delete in Editor.
 - Card prefab needs `backRenderer` and `glowRenderer` references assigned in the Inspector for the flip and reveal-glow effects to render correctly.
+- `HandScorer` component needs to be added to a GameObject (e.g. GameManager) and its `ScoreManager` reference wired in the Inspector.
+- `Assets/Resources/Cards/` contains only 5 of 52 `CardData` assets; the poker evaluator can only produce meaningful hand classifications once the full deck is populated.
+- `Assets/Scenes/SampleScene/` folder (containing `Global Volume Profile.asset`) is a leftover from the original SampleScene. Safe to leave if referenced by the Main camera's URP Volume, but the folder name no longer matches any scene.
 
 ---
 
@@ -228,6 +236,8 @@ Multiplier Text:    #ff6b6b
 | 2026-04-16 | QA sweep: CardData fields → `[SerializeField]` private + `FormerlySerializedAs`; CameraEffects BloomPulse linear→SmoothStep; removed orphaned `RequireComponent` from Card; removed unused `targetAberration` field + extracted magic number in CameraEffects. QA: 5 issues fixed. | 1–2 |
 | 2026-04-17 | Selection + play/discard pipeline: `HandActionController` coordinates cap-aware selection (max 5) via `Card.OnSelectToggleRequested`; static events `OnHandPlayed`/`OnHandDiscarded`/`OnSelectionCountChanged`/`OnSelectionRejected`. `Hand.RefillTo` tops up from Deck with staggered reveal. Juice: `SelectPop` scale overshoot, `BounceReject` recoil on cap, static `ScreenShake.Request` impulse on play. QA: 1 fix (SelectPop used hardcoded `Vector3.one` baseScale, snapped hovered cards). Audit: 0 auto-fixed, 2 logged (new TestScene.unity, Unity 6 Settings/ folder). | 2 |
 | 2026-04-17 | Hotfix: `ScreenShake.cs` — adding `using System;` for `Action<float,float>` event introduced `System.Random`/`UnityEngine.Random` ambiguity at `ShakeCoroutine` lines 65–66 (CS0104). Fully-qualified the two `UnityEngine.Random.Range` calls to resolve. | 2 |
+| 2026-04-17 | Poker hand evaluation + scoring bridge: `HandType` enum, `EvaluatedHand` struct, pure static `PokerHandEvaluator` (Balatro base values, wheel-straight support), `HandScorer` MonoBehaviour subscribing to `OnHandPlayed` → `ScoreManager.ApplyScore`. Juice: hand-strength-scaled screen shake (SmoothStep lerp, 0.05→0.35 amplitude), `OnHandEvaluated` event hook for future hand-name banner. QA: 0 issues. Audit: 0 auto-fixed, 2 new items logged (HandScorer scene wiring, 5/52 CardData assets); resolved scene-file-mismatch issue (Main.unity + Menu.unity now present). | 3 |
+| 2026-04-17 | Hotfix: `PokerHandEvaluator.cs` — `out bool isRoyal` declared inline inside a short-circuited `&&` meant the `out` param was not definitely assigned when count≠5 (CS0165). Hoisted `bool isRoyal = false;` to a separate line before the `IsStraight` call. | 3 |
 
 ---
 
