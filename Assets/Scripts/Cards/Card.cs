@@ -12,9 +12,19 @@ namespace BalatroStyle
         /// <summary>Fires after a face-up flip completes. Listeners get the revealed card.</summary>
         public static event Action<Card> OnCardRevealed;
 
+        /// <summary>Fires when a click requests a selection toggle. A coordinator (e.g. HandActionController) decides whether to grant it.</summary>
+        public static event Action<Card> OnSelectToggleRequested;
+
+        /// <summary>Fires after a selection change is accepted. Listeners get the card and its new selected state.</summary>
+        public static event Action<Card, bool> OnSelectionChanged;
+
         private const float FlipPopOvershoot = 1.08f;
         private const float FlipPopDuration = 0.08f;
         private const float RevealGlowDuration = 0.18f;
+        private const float SelectPopOvershoot = 1.10f;
+        private const float SelectPopDuration = 0.09f;
+        private const float BounceRecoilDistance = 0.18f;
+        private const float BounceRecoilDuration = 0.07f;
         private const int SortOrderOffset = 10;
         private const int SortOrderStride = 3;
 
@@ -122,15 +132,36 @@ namespace BalatroStyle
 
         private void OnMouseDown()
         {
-            ToggleSelected();
+            if (isAnimating) return;
+            OnSelectToggleRequested?.Invoke(this);
         }
 
-        /// <summary>Toggle selected state, activate glow, and lift/lower card accordingly.</summary>
-        public void ToggleSelected()
+        /// <summary>
+        /// Apply a selection state decided by a coordinator. Returns true if the state changed.
+        /// Use this from HandActionController instead of ToggleSelected for cap-aware selection.
+        /// </summary>
+        public bool TrySetSelected(bool selected)
         {
-            IsSelected = !IsSelected;
+            if (IsSelected == selected) return false;
+
+            IsSelected = selected;
             SetGlowActive(IsSelected);
             basePosition += IsSelected ? Vector3.up * selectedLiftY : Vector3.down * selectedLiftY;
+            StartCoroutine(SelectPop());
+            OnSelectionChanged?.Invoke(this, IsSelected);
+            return true;
+        }
+
+        /// <summary>Small recoil animation when a selection request is rejected (e.g. cap reached).</summary>
+        public IEnumerator BounceReject()
+        {
+            if (isAnimating) yield break;
+
+            Vector3 origin = transform.localPosition;
+            Vector3 recoil = origin + Vector3.down * BounceRecoilDistance;
+            yield return LerpLocalPosition(origin, recoil, BounceRecoilDuration);
+            yield return LerpLocalPosition(recoil, origin, BounceRecoilDuration);
+            transform.localPosition = origin;
         }
 
         private void SetGlowActive(bool active)
@@ -249,6 +280,32 @@ namespace BalatroStyle
             transform.localScale = baseScale;
         }
 
+        private IEnumerator SelectPop()
+        {
+            Vector3 baseScale = transform.localScale;
+            Vector3 peakScale = baseScale * SelectPopOvershoot;
+            float elapsed = 0f;
+
+            while (elapsed < SelectPopDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / SelectPopDuration);
+                transform.localScale = Vector3.Lerp(baseScale, peakScale, t);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < SelectPopDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / SelectPopDuration);
+                transform.localScale = Vector3.Lerp(peakScale, baseScale, t);
+                yield return null;
+            }
+
+            transform.localScale = baseScale;
+        }
+
         private IEnumerator RevealGlowPulse()
         {
             if (glowRenderer == null || IsSelected) yield break;
@@ -292,6 +349,19 @@ namespace BalatroStyle
 
             transform.localScale = endScale;
             transform.localPosition = endPos;
+        }
+
+        private IEnumerator LerpLocalPosition(Vector3 from, Vector3 to, float duration)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                transform.localPosition = Vector3.Lerp(from, to, t);
+                yield return null;
+            }
+            transform.localPosition = to;
         }
     }
 }

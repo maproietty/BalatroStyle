@@ -28,8 +28,37 @@ namespace BalatroStyle
 
         public IReadOnlyList<Card> Cards => cards;
 
+        /// <summary>Number of cards currently in the selected state.</summary>
+        public int SelectedCount => cards.Count(c => c.IsSelected);
+
         /// <summary>Instantiate a card for each CardData face-down, fan into arc, then reveal with stagger.</summary>
         public void DealCards(List<CardData> cardDatas)
+        {
+            var newCards = SpawnCardsFaceDown(cardDatas);
+            ArrangeCards();
+            StartCoroutine(StaggeredReveal(newCards));
+        }
+
+        /// <summary>
+        /// Draw from the given deck until the hand holds <paramref name="handSize"/> cards,
+        /// then fan and reveal new arrivals with the same cascading stagger as DealCards.
+        /// </summary>
+        public void RefillTo(Deck deck, int handSize)
+        {
+            if (deck == null) return;
+
+            int needed = handSize - cards.Count;
+            if (needed <= 0) return;
+
+            var drawn = deck.DrawMultiple(needed);
+            if (drawn.Count == 0) return;
+
+            var newCards = SpawnCardsFaceDown(drawn);
+            ArrangeCards();
+            StartCoroutine(StaggeredReveal(newCards));
+        }
+
+        private List<Card> SpawnCardsFaceDown(List<CardData> cardDatas)
         {
             var newCards = new List<Card>(cardDatas.Count);
             foreach (var data in cardDatas)
@@ -40,8 +69,7 @@ namespace BalatroStyle
                 cards.Add(card);
                 newCards.Add(card);
             }
-            ArrangeCards();
-            StartCoroutine(StaggeredReveal(newCards));
+            return newCards;
         }
 
         private IEnumerator StaggeredReveal(List<Card> dealtCards)
@@ -68,8 +96,11 @@ namespace BalatroStyle
             return datas;
         }
 
-        /// <summary>Return selected card data without destroying (for play).</summary>
+        /// <summary>Return the list of currently selected Card instances (read-only snapshot).</summary>
         public List<Card> GetSelected() => cards.Where(c => c.IsSelected).ToList();
+
+        /// <summary>Return the CardData for currently selected cards, without removing them.</summary>
+        public List<CardData> GetSelectedData() => cards.Where(c => c.IsSelected).Select(c => c.Data).ToList();
 
         /// <summary>Destroy all card GameObjects and clear the hand list.</summary>
         public void ClearHand()

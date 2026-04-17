@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections;
 
 namespace BalatroStyle
 {
@@ -16,6 +17,10 @@ namespace BalatroStyle
 
         [Header("Dependencies")]
         [SerializeField] private ScoreManager scoreManager;
+
+        [Header("Bootstrap")]
+        [Tooltip("Auto-start a new game one frame after scene load. Useful during development before a menu exists.")]
+        [SerializeField] private bool autoStartOnPlay = true;
 
         public int HandsRemaining { get; private set; }
         public int DiscardsRemaining { get; private set; }
@@ -41,6 +46,15 @@ namespace BalatroStyle
         private void Start()
         {
             ChangeState(GameState.Menu);
+            if (autoStartOnPlay)
+                StartCoroutine(AutoStartNextFrame());
+        }
+
+        // Wait one frame so every scene object's Start() has run (e.g. Deck.Reset) before dealing.
+        private IEnumerator AutoStartNextFrame()
+        {
+            yield return null;
+            StartNewGame();
         }
 
         /// <summary>Reset score and begin the first round of a new game.</summary>

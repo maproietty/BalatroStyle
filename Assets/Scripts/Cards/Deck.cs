@@ -30,6 +30,10 @@ namespace BalatroStyle
         /// <summary>Draw the top card from the pile; reshuffles discard if pile is empty.</summary>
         public CardData Draw()
         {
+            // Self-initialize if Start() hasn't run yet (e.g. first-frame deal).
+            if (drawPile.Count == 0 && discardPile.Count == 0 && allCards.Count > 0)
+                Reset();
+
             if (drawPile.Count == 0)
                 Reshuffle();
 

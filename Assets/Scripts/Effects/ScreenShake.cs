@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Collections;
 
 namespace BalatroStyle
@@ -8,6 +9,9 @@ namespace BalatroStyle
     /// </summary>
     public class ScreenShake : MonoBehaviour
     {
+        /// <summary>Static channel for any system to request a shake without holding a reference.</summary>
+        public static event Action<float, float> OnShakeRequested;
+
         [SerializeField] private float baseAmplitude = 0.15f;
         [SerializeField] private float baseDuration = 0.35f;
 
@@ -17,12 +21,21 @@ namespace BalatroStyle
         private void OnEnable()
         {
             ScoreManager.OnScoreRolled += HandleScoreRolled;
+            OnShakeRequested += HandleShakeRequested;
         }
 
         private void OnDisable()
         {
             ScoreManager.OnScoreRolled -= HandleScoreRolled;
+            OnShakeRequested -= HandleShakeRequested;
         }
+
+        /// <summary>Invoke OnShakeRequested so any camera-attached ScreenShake handles it.</summary>
+        public static void Request(float amplitude, float duration) =>
+            OnShakeRequested?.Invoke(amplitude, duration);
+
+        private void HandleShakeRequested(float amplitude, float duration) =>
+            Shake(amplitude, duration);
 
         private void Start()
         {
@@ -49,8 +62,8 @@ namespace BalatroStyle
             {
                 elapsed += Time.deltaTime;
                 float remaining = 1f - (elapsed / duration);
-                float x = Random.Range(-1f, 1f) * amplitude * remaining;
-                float y = Random.Range(-1f, 1f) * amplitude * remaining;
+                float x = UnityEngine.Random.Range(-1f, 1f) * amplitude * remaining;
+                float y = UnityEngine.Random.Range(-1f, 1f) * amplitude * remaining;
                 transform.localPosition = originPosition + new Vector3(x, y, 0f);
                 yield return null;
             }

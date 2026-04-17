@@ -133,9 +133,9 @@ Multiplier Text:    #ff6b6b
 - [ ] Design card back sprite
 - [ ] Build Card prefab with hover/select animations
 - [x] Card flip animation (front/back)
-- [ ] Hand layout system (fan cards in arc)
-- [ ] Card drag & drop / selection system
-- [ ] Card wobble/tilt on hover
+- [x] Hand layout system (fan cards in arc)
+- [x] Card drag & drop / selection system
+- [x] Card wobble/tilt on hover
 
 ### Phase 3 — Game Logic
 - [ ] Deck data model (52 cards, shuffle, draw)
@@ -175,11 +175,12 @@ Multiplier Text:    #ff6b6b
 - `Scripts/Game/GameManager.cs` — singleton, state machine, events
 - `Scripts/Game/ScoreManager.cs` — chips×multiplier scoring, rolling counter events
 - `Scripts/Game/RoundManager.cs` — ante/blind progression
+- `Scripts/Game/HandActionController.cs` — selection-cap gating, play/discard pipeline, hotkeys (`Space`=play, `D`=discard), static events `OnHandPlayed`/`OnHandDiscarded`/`OnSelectionCountChanged`/`OnSelectionRejected`
 - `Scripts/Cards/CardData.cs` — ScriptableObject for card definition
 - `Scripts/Cards/Deck.cs` — shuffle, draw, discard
-- `Scripts/Cards/Hand.cs` — fan layout, card management
-- `Scripts/Cards/Card.cs` — hover wobble (spring physics), selection, move coroutine, flip with reveal pop+glow, `OnCardRevealed` event
-- `Scripts/Effects/ScreenShake.cs` — auto-shakes on score events
+- `Scripts/Cards/Hand.cs` — fan layout, card management, `RefillTo(Deck, handSize)` with staggered reveal
+- `Scripts/Cards/Card.cs` — hover wobble (spring physics), flip with reveal pop+glow, cap-aware selection (`TrySetSelected`, `BounceReject`), static events `OnCardRevealed`/`OnSelectToggleRequested`/`OnSelectionChanged`
+- `Scripts/Effects/ScreenShake.cs` — auto-shakes on score events + static `ScreenShake.Request(amp, dur)` channel
 - `Scripts/Effects/CameraEffects.cs` — bloom pulse, chromatic aberration on score
 - `Scripts/Effects/AnimatedBackground.cs` — scales background Quad to cover the camera each frame (pairs with AnimatedBackground.shader)
 
@@ -195,6 +196,9 @@ Multiplier Text:    #ff6b6b
 - **Win condition event** — `RoundManager.OnAllAntesCleared` fires when all 8 antes are cleared. Subscribe in a future win-screen script.
 - **Card reveal event** — `Card.OnCardRevealed` (static `Action<Card>`) fires after a face-up flip completes. Subscribe in future systems (e.g. discovery log, tutorial highlight) without coupling to `Hand` or `Deck`.
 - **Deal flow** — `Hand.DealCards` instantiates cards face-down, fans them into the arc, waits `dealFlipDelay`, then flips each card with `dealStagger` between flips. The cascading reveal is the sprint's juice signature.
+- **Selection pipeline** — `Card.OnMouseDown` fires `OnSelectToggleRequested` (not a direct toggle). `HandActionController` subscribes, enforces `maxSelected` cap (default 5), and calls `Card.TrySetSelected`. Rejected selections trigger `Card.BounceReject` for feedback. This keeps `Card` ignorant of hand-wide rules.
+- **Play / Discard pipeline** — `HandActionController.PlaySelected` / `DiscardSelected` consume counts on `GameManager`, remove cards via `Hand.RemoveSelected`, push discards to `Deck`, fire `OnHandPlayed` / `OnHandDiscarded`, then `Hand.RefillTo(deck, handSize)` tops the hand back up with a staggered reveal.
+- **Decoupled shake channel** — `ScreenShake.Request(amplitude, duration)` is a static convenience that fires `OnShakeRequested`; any active `ScreenShake` instance handles it. Used by `HandActionController` on play without a direct reference.
 - **Audio deferred** — No audio systems, managers, or placeholder hooks. Will be added in a future update.
 
 ---
@@ -204,7 +208,8 @@ Multiplier Text:    #ff6b6b
 - `Card.cs` uses `OnMouseDown`/`OnMouseEnter` — requires a Box Collider 2D on the Card prefab.
 - `CameraEffects.cs` requires a URP Global Volume with Bloom, Vignette, and ChromaticAberration overrides.
 - `GameManager` and `RoundManager` each have a `[SerializeField] private ScoreManager scoreManager` — these must be wired up in the scene Inspector before play.
-- Scene file mismatch — only `Assets/Scenes/SampleScene.unity` exists (Unity default); framework specifies `Main.unity` and `Menu.unity`. Developer to rename or replace.
+- Scene file mismatch — `Assets/Scenes/SampleScene.unity` and `Assets/Scenes/TestScene.unity` both exist; framework specifies `Main.unity` and `Menu.unity`. Developer to rename or replace.
+- `Assets/Settings/` folder (Unity 6 URP auto-generated) is not listed in the approved folder structure; safe to keep, noted for awareness.
 - `Assets/Audio/Music/` and `Assets/Audio/SFX/` folders exist but are empty — leftover scaffolding that contradicts the audio-deferred policy. Safe to leave or delete in Editor.
 - Card prefab needs `backRenderer` and `glowRenderer` references assigned in the Inspector for the flip and reveal-glow effects to render correctly.
 
@@ -221,6 +226,8 @@ Multiplier Text:    #ff6b6b
 | 2026-04-14 | Background Quad wired in scene; QA: 1 issue fixed (removed unused cached MeshRenderer field)  | 1         |
 | 2026-04-16 | Card flip system: `Card.Flip` coroutine + `OnCardRevealed` event + staggered deal-then-reveal in `Hand`. Juice: scale-pop + glow pulse on reveal. QA: 1 fix (removed unused `sr` field). Audit: 3 findings logged to Notion. | 2         |
 | 2026-04-16 | QA sweep: CardData fields → `[SerializeField]` private + `FormerlySerializedAs`; CameraEffects BloomPulse linear→SmoothStep; removed orphaned `RequireComponent` from Card; removed unused `targetAberration` field + extracted magic number in CameraEffects. QA: 5 issues fixed. | 1–2 |
+| 2026-04-17 | Selection + play/discard pipeline: `HandActionController` coordinates cap-aware selection (max 5) via `Card.OnSelectToggleRequested`; static events `OnHandPlayed`/`OnHandDiscarded`/`OnSelectionCountChanged`/`OnSelectionRejected`. `Hand.RefillTo` tops up from Deck with staggered reveal. Juice: `SelectPop` scale overshoot, `BounceReject` recoil on cap, static `ScreenShake.Request` impulse on play. QA: 1 fix (SelectPop used hardcoded `Vector3.one` baseScale, snapped hovered cards). Audit: 0 auto-fixed, 2 logged (new TestScene.unity, Unity 6 Settings/ folder). | 2 |
+| 2026-04-17 | Hotfix: `ScreenShake.cs` — adding `using System;` for `Action<float,float>` event introduced `System.Random`/`UnityEngine.Random` ambiguity at `ShakeCoroutine` lines 65–66 (CS0104). Fully-qualified the two `UnityEngine.Random.Range` calls to resolve. | 2 |
 
 ---
 
