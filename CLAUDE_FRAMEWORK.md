@@ -4,13 +4,15 @@
 ## Purpose
 This is the single source of truth for Claude Code when working on this project. Read this file at the start of every session before making any changes. After completing work, update the **Current Phase** and **Changelog** sections below.
 
+**Design source of truth:** `design-doc.md` in the project root (a local snapshot of the Notion design document). It defines the locked-in design pillars, charm families, Night structure, economy, and theme. If this framework disagrees with the design doc, the design doc wins — update this file to match.
+
 ---
 
 ## Project Summary
-- **Game:** A poker-based card game with Balatro-inspired visuals
+- **Game:** A poker roguelite set in a drug-tinged occult parlor. 7-card Hold'em variant (2 hole + 5 community, pick best 5), chips×multiplier scoring, charm-driven build-crafting across three substance families (Psychedelic / Smoke / Chemical), chaptered Nights with escalating thresholds and boss hands, two-currency economy (chips for shop, dollars for bankroll/reshuffles/buy-ins), Lifeline rescue, and indefinite post-House nights for "chasing the dragon." Full design locked in `design-doc.md`.
 - **Engine:** Unity 6 LTS, 2D URP (Universal Render Pipeline)
 - **Language:** C#
-- **Visual Style:** CRT scanlines, pixel art, neon glows, dark backgrounds, retro-arcade aesthetic, screen shake, satisfying card physics
+- **Visual Style:** Candlelit mystic parlor — sacred geometry, hookah smoke, reagent vials — layered over a retro-arcade substrate (CRT scanlines, neon glow, dark palette, screen shake, satisfying card physics). The "passing-out motif" (room darkens/blurs as thresholds climb; cards and table stay clear) is a signature feel target.
 - **Audio:** Deferred — no audio work until post-launch update
 
 ---
@@ -141,9 +143,14 @@ Multiplier Text:    #ff6b6b
 - [ ] Deck data model (52 cards, shuffle, draw)
 - [x] Poker hand evaluation system
 - [x] Scoring system (chips × multiplier)
-- [ ] Round/ante progression system
+- [ ] 7-card Hold'em deal (2 hole + 5 community, pick best 5) — supersedes generic hand-size progression
+- [ ] Night progression system (5-night baseline → The House → indefinite post-House), replacing the ante-based prototype in `RoundManager`
+- [ ] Boss hand system — three dealer manipulation surfaces (hole tampering / community manipulation / scoring interference)
+- [ ] Lifeline rescue (one per night, bankroll cost, re-deal at harder threshold)
 - [x] Discard mechanic
-- [ ] Joker card system (modifiers/special effects)
+- [ ] Charm system (three families: Psychedelic rule-warpers, Smoke conditional triggers, Chemical stackable multipliers; 5 starting slots with in-charm slot expansion; pure-family set bonuses + cross-family synergy charms)
+- [ ] Two-currency economy — chips (shop) + dollars (bankroll: overshoot earnings, reshuffles at escalating cost, night buy-ins)
+- [ ] Meta-progression — per-charm unlock requirements gating access for first-time players
 
 ### Phase 4 — Effects & Juice
 - [x] Screen shake on big scores
@@ -170,7 +177,7 @@ Multiplier Text:    #ff6b6b
 
 ## Current Phase
 **Phase 4 — Effects & Juice / Phase 5 — UI & Menus** (in progress)
-Phases 1–3 mostly complete; remaining Phase 1 items are Editor-only (CRT Renderer Feature, pixel-perfect camera, URP Volume overrides). Remaining Phase 3 items: full 52-card `CardData` set, Joker system. Next priority: played-cards-slide-to-scoring-area animation with per-card chip-fly (Phase 4).
+Phases 1–3 mostly complete; remaining Phase 1 items are Editor-only (CRT Renderer Feature, pixel-perfect camera, URP Volume overrides). Remaining Phase 3 items: full 52-card `CardData` set, plus the full design-doc backlog (7-card Hold'em deal, Night progression replacing ante prototype, boss hands, Lifeline, Charm system, two-currency economy, meta-progression). Next priority: played-cards-slide-to-scoring-area animation with per-card chip-fly (Phase 4).
 
 ### Scaffolded Scripts (ready, need wiring in scenes)
 - `Scripts/UI/ScoreHUD.cs` — subscribes to scoring + hand-action events; drives rolling total score, chips×mult label, hands/discards remaining, selection count; scale pops on counters, gold color flash on score roll
@@ -200,7 +207,7 @@ Phases 1–3 mostly complete; remaining Phase 1 items are Editor-only (CRT Rende
 - **CRT effect implementation** — Written as a URP HLSL shader. Must be added as a "Full Screen Pass Renderer Feature" in the URP Renderer asset (Settings/Renderer2D.asset). Create a Material using this shader and assign it there.
 - **Spring physics for card wobble** — Implemented directly in `Card.cs Update()` — no physics engine needed.
 - **Only one singleton** — `GameManager` is the sole singleton. `ScoreManager` and `RoundManager` are regular MonoBehaviours; `GameManager` and `RoundManager` each hold a `[SerializeField] private ScoreManager` reference wired in the scene.
-- **Win condition event** — `RoundManager.OnAllAntesCleared` fires when all 8 antes are cleared. Subscribe in a future win-screen script.
+- **Win condition event** — `RoundManager.OnAllAntesCleared` fires when all 8 antes are cleared. Subscribe in a future win-screen script. *Note: this 8-ante model is prototype scaffolding; per `design-doc.md` the shipping structure is 5 Nights → climactic hand against The House → indefinite post-House buy-ins. `RoundManager` will be reworked into a Night-based progression system in Phase 3, and the win/run-end event surface will change accordingly.*
 - **Card reveal event** — `Card.OnCardRevealed` (static `Action<Card>`) fires after a face-up flip completes. Subscribe in future systems (e.g. discovery log, tutorial highlight) without coupling to `Hand` or `Deck`.
 - **Deal flow** — `Hand.DealCards` instantiates cards face-down, fans them into the arc, waits `dealFlipDelay`, then flips each card with `dealStagger` between flips. The cascading reveal is the sprint's juice signature.
 - **Selection pipeline** — `Card.OnMouseDown` fires `OnSelectToggleRequested` (not a direct toggle). `HandActionController` subscribes, enforces `maxSelected` cap (default 5), and calls `Card.TrySetSelected`. Rejected selections trigger `Card.BounceReject` for feedback. This keeps `Card` ignorant of hand-wide rules.
@@ -228,7 +235,7 @@ Phases 1–3 mostly complete; remaining Phase 1 items are Editor-only (CRT Rende
 - `Assets/Resources/Cards/` contains only 5 of 52 `CardData` assets; the poker evaluator can only produce meaningful hand classifications once the full deck is populated.
 - `Assets/Scenes/SampleScene/` folder (containing `Global Volume Profile.asset`) is a leftover from the original SampleScene. Safe to leave if referenced by the Main camera's URP Volume, but the folder name no longer matches any scene.
 - `ScoreHUD` + `HandNameBanner` need scene wiring: create a world-space or screen-space Canvas, add TMP text labels for total score, chips×mult, hands remaining, discards remaining, selection count, plus a banner RectTransform (with `CanvasGroup`) for the hand-name popup. Wire all `[SerializeField]` refs in the Inspector.
-- `vision.md` is still stubbed — all section prompts are placeholders. Without developer-authored design intent, many feel-level choices (scoring moments, visual signature, anti-patterns) are being decided implicitly by code. Highest-priority non-code task.
+- **Code ↔ design-doc gaps** (to be closed during Phase 3 rework; tracked here so the next sprint picks them up): `RoundManager` uses 8 antes instead of 5 Nights; `Hand`/`HandActionController` deal a generic hand instead of 2 hole + 5 community; no Charm system, no dollar/chip split, no Lifeline, no dealer-manipulation surfaces, no passing-out visual motif. None of these block current Phase 4–5 juice/UI work, but they are the canonical backlog for Phase 3.
 
 ---
 

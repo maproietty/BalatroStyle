@@ -18,14 +18,19 @@ screen shake, satisfying card physics. Think Balatro — dark, juicy, addictive.
 It contains the folder structure, coding conventions, current phase checklist,
 architecture notes, known issues, and changelog.
 
-**vision.md** — read this every session alongside the framework. It contains
-the developer's design intentions: how the game should feel, mechanics ideas,
-scoring concepts, joker/charm ideas. Let it shape *how* you build, not just *what*.
+**design-doc.md** — read this every session alongside the framework. It is a
+local snapshot of the Notion page "BalatroStyle - Design Document" and contains
+the locked-in design pillars (combo builder, 7-card Hold'em selection, runaway
+thresholds, chaptered Nights, chasing-the-dragon loop), the three charm families
+(Psychedelic / Smoke / Chemical), the two-currency economy, dealer manipulation
+surfaces, and the drug-tinged occult parlor theme. Let it shape *how* you build,
+not just *what*. If it ever conflicts with the framework, the design doc wins —
+update the framework to match.
 
 ## Every Session Start
 
 1. Read CLAUDE_FRAMEWORK.md
-2. Read vision.md
+2. Read design-doc.md
 3. Run /sprint (or whatever command the developer invokes)
 
 Do not write a single line of code before reading both files.
