@@ -1,62 +1,52 @@
 using UnityEngine;
 using System;
-using System.Collections;
 
 namespace BalatroStyle
 {
     /// <summary>
-    /// Tracks chips and multiplier, fires score events, drives rolling-number display.
+    /// Tracks chips, multiplier, and total score. Fires one event per scoring action
+    /// so downstream systems (HUD rolling counter, camera bloom pulse, etc.) can drive
+    /// their own animations without ScoreManager owning display timing.
     /// </summary>
     public class ScoreManager : MonoBehaviour
     {
-        [Header("Scoring")]
-        [SerializeField] private float rollDuration = 0.8f;
+        [Header("Magnitude")]
         [SerializeField] private float maxScoreForMagnitude = 5000f;
 
         public int TotalScore { get; private set; }
         public int CurrentChips { get; private set; }
         public int CurrentMultiplier { get; private set; } = 1;
 
-        // Fired with the new displayed score so HUD can update
-        public static event Action<int, int> OnScoreChanged;     // chips, multiplier
-        public static event Action<int, float> OnScoreRolled;    // totalDelta, magnitude (0-1)
+        /// <summary>Fires whenever chips/multiplier change. (chips, multiplier)</summary>
+        public static event Action<int, int> OnScoreChanged;
 
-        /// <summary>Reset all score state to zero and fire OnScoreChanged.</summary>
+        /// <summary>Fires once per ApplyScore. (delta, magnitude 0–1) — drives juice.</summary>
+        public static event Action<int, float> OnScoreRolled;
+
+        /// <summary>Fires when score state is reset to zero (e.g. new game).</summary>
+        public static event Action OnScoreReset;
+
+        /// <summary>Reset all score state to zero.</summary>
         public void ResetScore()
         {
             TotalScore = 0;
             CurrentChips = 0;
             CurrentMultiplier = 1;
             OnScoreChanged?.Invoke(CurrentChips, CurrentMultiplier);
+            OnScoreReset?.Invoke();
         }
 
-        /// <summary>Apply chips × multiplier to TotalScore and trigger roll animation.</summary>
+        /// <summary>Apply chips × multiplier to TotalScore and notify listeners once.</summary>
         public void ApplyScore(int chips, int multiplier)
         {
             CurrentChips = chips;
             CurrentMultiplier = multiplier;
             int delta = chips * multiplier;
-            OnScoreChanged?.Invoke(chips, multiplier);
+            TotalScore += delta;
 
             float magnitude = Mathf.Clamp01(delta / maxScoreForMagnitude);
+            OnScoreChanged?.Invoke(chips, multiplier);
             OnScoreRolled?.Invoke(delta, magnitude);
-
-            StartCoroutine(RollScoreCoroutine(TotalScore, TotalScore + delta));
-            TotalScore += delta;
-        }
-
-        private IEnumerator RollScoreCoroutine(int from, int to)
-        {
-            float elapsed = 0f;
-            while (elapsed < rollDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / rollDuration);
-                int displayed = Mathf.RoundToInt(Mathf.Lerp(from, to, t));
-                // HUD subscribes to this event for the rolling counter
-                OnScoreRolled?.Invoke(displayed - from, t);
-                yield return null;
-            }
         }
     }
 }

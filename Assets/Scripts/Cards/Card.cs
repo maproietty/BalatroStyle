@@ -54,13 +54,21 @@ namespace BalatroStyle
 
         private Camera cam;
 
-        // Spring physics for hover wobble
+        // Layout rest state — basePosition is the raw layout target; selectionOffset is
+        // composed on top so a selection survives re-layouts (ArrangeCards -> MoveToPosition).
         private Vector3 basePosition;
+        private Vector3 selectionOffset;
         private Quaternion baseRotation;
-        private float tiltVelocity;
-        private float currentTilt;
+
+        // Spring physics for hover wobble (Z = lean left/right, X = lean forward/back).
+        private float tiltZVelocity;
+        private float currentTiltZ;
+        private float tiltXVelocity;
+        private float currentTiltX;
+
         private bool isHovered;
         private bool isAnimating;
+        private Coroutine hoverRoutine;
 
         private void Awake()
         {
@@ -97,37 +105,48 @@ namespace BalatroStyle
 
         private void UpdateHoverWobble()
         {
-            if (!isHovered) return;
+            if (!isHovered || cam == null) return;
 
             Vector3 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
             mouseWorld.z = 0f;
             Vector3 delta = mouseWorld - transform.position;
 
-            // Spring tilt toward cursor
-            float targetTilt = Mathf.Clamp(-delta.x * tiltCursorMultiplier, -hoverTiltMax, hoverTiltMax);
-            float tiltAccel = (targetTilt - currentTilt) * springStiffness * Time.deltaTime
-                              - tiltVelocity * springDamping * Time.deltaTime;
-            tiltVelocity += tiltAccel;
-            currentTilt += tiltVelocity * Time.deltaTime;
+            // Z lean follows cursor X (tilts toward cursor horizontally).
+            float targetTiltZ = Mathf.Clamp(-delta.x * tiltCursorMultiplier, -hoverTiltMax, hoverTiltMax);
+            currentTiltZ = IntegrateSpring(currentTiltZ, targetTiltZ, ref tiltZVelocity);
 
-            transform.rotation = baseRotation * Quaternion.Euler(0f, 0f, currentTilt);
+            // X lean follows cursor Y (tilts card forward/back — subtle shear in ortho 2D).
+            float targetTiltX = Mathf.Clamp(delta.y * tiltCursorMultiplier, -hoverTiltMax, hoverTiltMax);
+            currentTiltX = IntegrateSpring(currentTiltX, targetTiltX, ref tiltXVelocity);
+
+            transform.rotation = baseRotation * Quaternion.Euler(currentTiltX, 0f, currentTiltZ);
+        }
+
+        private float IntegrateSpring(float current, float target, ref float velocity)
+        {
+            float accel = (target - current) * springStiffness * Time.deltaTime
+                          - velocity * springDamping * Time.deltaTime;
+            velocity += accel;
+            return current + velocity * Time.deltaTime;
         }
 
         private void OnMouseEnter()
         {
             if (isAnimating) return;
             isHovered = true;
-            StopAllCoroutines();
-            StartCoroutine(AnimateHover(true));
+            if (hoverRoutine != null) StopCoroutine(hoverRoutine);
+            hoverRoutine = StartCoroutine(AnimateHover(true));
         }
 
         private void OnMouseExit()
         {
             isHovered = false;
-            tiltVelocity = 0f;
-            currentTilt = 0f;
-            StopAllCoroutines();
-            StartCoroutine(AnimateHover(false));
+            tiltZVelocity = 0f;
+            currentTiltZ = 0f;
+            tiltXVelocity = 0f;
+            currentTiltX = 0f;
+            if (hoverRoutine != null) StopCoroutine(hoverRoutine);
+            hoverRoutine = StartCoroutine(AnimateHover(false));
         }
 
         private void OnMouseDown()
@@ -146,7 +165,7 @@ namespace BalatroStyle
 
             IsSelected = selected;
             SetGlowActive(IsSelected);
-            basePosition += IsSelected ? Vector3.up * selectedLiftY : Vector3.down * selectedLiftY;
+            selectionOffset = IsSelected ? Vector3.up * selectedLiftY : Vector3.zero;
             StartCoroutine(SelectPop());
             OnSelectionChanged?.Invoke(this, IsSelected);
             return true;
@@ -185,18 +204,19 @@ namespace BalatroStyle
             isAnimating = true;
             Vector3 startPos = transform.localPosition;
             Quaternion startRot = transform.localRotation;
+            Vector3 finalPos = targetPos + selectionOffset;
             float elapsed = 0f;
 
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
-                transform.localPosition = Vector3.Lerp(startPos, targetPos, t);
+                transform.localPosition = Vector3.Lerp(startPos, finalPos, t);
                 transform.localRotation = Quaternion.Slerp(startRot, targetRot, t);
                 yield return null;
             }
 
-            transform.localPosition = targetPos;
+            transform.localPosition = finalPos;
             transform.localRotation = targetRot;
             basePosition = targetPos;
             baseRotation = targetRot;
@@ -334,9 +354,8 @@ namespace BalatroStyle
             Vector3 startScale = transform.localScale;
             Vector3 endScale = hoveringIn ? Vector3.one * hoverScaleUp : Vector3.one;
             Vector3 startPos = transform.localPosition;
-            Vector3 endPos = hoveringIn
-                ? basePosition + Vector3.up * hoverLiftY
-                : basePosition;
+            Vector3 restPos = basePosition + selectionOffset;
+            Vector3 endPos = hoveringIn ? restPos + Vector3.up * hoverLiftY : restPos;
 
             while (elapsed < duration)
             {
@@ -349,6 +368,7 @@ namespace BalatroStyle
 
             transform.localScale = endScale;
             transform.localPosition = endPos;
+            hoverRoutine = null;
         }
 
         private IEnumerator LerpLocalPosition(Vector3 from, Vector3 to, float duration)

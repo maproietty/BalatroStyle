@@ -43,11 +43,7 @@ namespace BalatroStyle
 
             EvaluatedHand evaluated = PokerHandEvaluator.Evaluate(playedCards);
 
-            int chips = evaluated.BaseChips;
-            foreach (var card in evaluated.ScoringCards)
-                chips += card.ChipValue;
-
-            scoreManager.ApplyScore(chips, evaluated.BaseMultiplier);
+            scoreManager.ApplyScore(evaluated.TotalChips, evaluated.BaseMultiplier);
 
             RequestHandStrengthShake(evaluated.Type);
 

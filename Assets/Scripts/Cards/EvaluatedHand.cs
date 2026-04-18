@@ -36,5 +36,23 @@ namespace BalatroStyle
             BaseMultiplier = baseMultiplier;
             DisplayName = displayName;
         }
+
+        /// <summary>Total chips contributed = BaseChips + sum of ScoringCards' ChipValue.</summary>
+        public int TotalChips
+        {
+            get
+            {
+                int total = BaseChips;
+                if (ScoringCards != null)
+                {
+                    for (int i = 0; i < ScoringCards.Count; i++)
+                        total += ScoringCards[i].ChipValue;
+                }
+                return total;
+            }
+        }
+
+        /// <summary>Final score = TotalChips × BaseMultiplier.</summary>
+        public int FinalScore => TotalChips * BaseMultiplier;
     }
 }

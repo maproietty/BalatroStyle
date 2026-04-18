@@ -12,21 +12,16 @@ namespace BalatroStyle
         /// <summary>Static channel for any system to request a shake without holding a reference.</summary>
         public static event Action<float, float> OnShakeRequested;
 
-        [SerializeField] private float baseAmplitude = 0.15f;
-        [SerializeField] private float baseDuration = 0.35f;
-
         private Vector3 originPosition;
         private Coroutine shakeCoroutine;
 
         private void OnEnable()
         {
-            ScoreManager.OnScoreRolled += HandleScoreRolled;
             OnShakeRequested += HandleShakeRequested;
         }
 
         private void OnDisable()
         {
-            ScoreManager.OnScoreRolled -= HandleScoreRolled;
             OnShakeRequested -= HandleShakeRequested;
         }
 
@@ -40,12 +35,6 @@ namespace BalatroStyle
         private void Start()
         {
             originPosition = transform.localPosition;
-        }
-
-        private void HandleScoreRolled(int delta, float magnitude)
-        {
-            if (magnitude < 0.1f) return;
-            Shake(baseAmplitude * magnitude, baseDuration * (0.5f + magnitude * 0.5f));
         }
 
         /// <summary>Trigger a shake with explicit amplitude and duration (0–1 magnitude).</summary>

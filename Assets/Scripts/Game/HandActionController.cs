@@ -36,8 +36,8 @@ namespace BalatroStyle
         [SerializeField] private KeyCode discardKey = KeyCode.D;
 
         [Header("Juice")]
-        [SerializeField] private float playShakeAmplitude = 0.08f;
-        [SerializeField] private float playShakeDuration = 0.18f;
+        [SerializeField] private float discardShakeAmplitude = 0.06f;
+        [SerializeField] private float discardShakeDuration = 0.14f;
 
         private void OnEnable()
         {
@@ -110,7 +110,7 @@ namespace BalatroStyle
 
             var playedData = hand.RemoveSelected();
             gm.UseHand();
-            ScreenShake.Request(playShakeAmplitude, playShakeDuration);
+            // Screen shake is driven downstream by HandScorer so it scales with hand strength.
             OnHandPlayed?.Invoke(playedData);
             OnSelectionCountChanged?.Invoke(hand.SelectedCount);
 
@@ -138,6 +138,7 @@ namespace BalatroStyle
                     deck.Discard(data);
             }
 
+            ScreenShake.Request(discardShakeAmplitude, discardShakeDuration);
             OnHandDiscarded?.Invoke(discardedData);
             OnSelectionCountChanged?.Invoke(hand.SelectedCount);
 

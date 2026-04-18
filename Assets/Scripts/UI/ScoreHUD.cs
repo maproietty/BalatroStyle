@@ -56,6 +56,7 @@ namespace BalatroStyle
         private void OnEnable()
         {
             ScoreManager.OnScoreChanged += HandleScoreChanged;
+            ScoreManager.OnScoreReset += HandleScoreReset;
             HandScorer.OnHandEvaluated += HandleHandEvaluated;
             HandActionController.OnHandPlayed += HandleHandPlayed;
             HandActionController.OnHandDiscarded += HandleHandDiscarded;
@@ -66,6 +67,7 @@ namespace BalatroStyle
         private void OnDisable()
         {
             ScoreManager.OnScoreChanged -= HandleScoreChanged;
+            ScoreManager.OnScoreReset -= HandleScoreReset;
             HandScorer.OnHandEvaluated -= HandleHandEvaluated;
             HandActionController.OnHandPlayed -= HandleHandPlayed;
             HandActionController.OnHandDiscarded -= HandleHandDiscarded;
@@ -81,22 +83,16 @@ namespace BalatroStyle
         private void HandleScoreChanged(int chips, int multiplier)
         {
             SetChipsMult(chips, multiplier);
+        }
 
-            // Reset case: ScoreManager.ResetScore fires (0, 1) — snap the display.
-            if (chips == 0 && multiplier == 1 && scoreManager != null && scoreManager.TotalScore == 0)
-            {
-                SnapScore(0);
-            }
+        private void HandleScoreReset()
+        {
+            SnapScore(0);
         }
 
         private void HandleHandEvaluated(EvaluatedHand evaluated)
         {
-            int cardChips = 0;
-            foreach (var card in evaluated.ScoringCards)
-                cardChips += card.ChipValue;
-
-            int delta = (evaluated.BaseChips + cardChips) * evaluated.BaseMultiplier;
-            RollScoreBy(delta);
+            RollScoreBy(evaluated.FinalScore);
         }
 
         private void HandleHandPlayed(List<CardData> _)

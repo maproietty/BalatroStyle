@@ -63,13 +63,9 @@ namespace BalatroStyle
         /// <summary>Display the banner for a freshly-evaluated hand. Restarts if already showing.</summary>
         public void Show(EvaluatedHand evaluated)
         {
-            int cardChips = 0;
-            foreach (var card in evaluated.ScoringCards)
-                cardChips += card.ChipValue;
-            int totalChips = evaluated.BaseChips + cardChips;
-
             if (nameLabel != null) nameLabel.text = evaluated.DisplayName;
-            if (chipsMultLabel != null) chipsMultLabel.text = totalChips + " × " + evaluated.BaseMultiplier;
+            if (chipsMultLabel != null)
+                chipsMultLabel.text = evaluated.TotalChips + " × " + evaluated.BaseMultiplier;
 
             if (current != null) StopCoroutine(current);
             current = StartCoroutine(ShowCoroutine());
